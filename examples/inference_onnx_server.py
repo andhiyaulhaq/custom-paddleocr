@@ -27,7 +27,7 @@ if not os.path.exists(det_model_path) or not os.path.exists(rec_model_path):
 engine = ONNXOCREngine(det_model_path, rec_model_path, dict_path)
 
 # --- 2. Load image ---
-image_path = os.path.join(root_dir, "data", "samples", "1.jpg")
+image_path = os.path.join(root_dir, "data", "samples", "6.jpg")
 img = cv2.imread(image_path)
 if img is None:
     print(f"Error: Could not load image at {image_path}")
