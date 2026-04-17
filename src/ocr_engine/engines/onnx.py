@@ -3,6 +3,7 @@ import numpy as np
 import onnxruntime as ort
 import math
 from ..utils.postprocess import DBPostProcess, CTCLabelDecode
+from ..utils.geometry import get_rotate_crop_image
 
 def create_predictor(model_path):
     # ONNX Runtime session
@@ -70,3 +71,39 @@ class ONNXTextRecognizer:
         out = self.session.run(None, {self.input_name: norm_img_batch})[0]
         
         return self.postprocess(out)
+
+class ONNXOCREngine:
+    """
+    High-level engine that combines text detection and recognition.
+    """
+    def __init__(self, det_model_path, rec_model_path, dict_path):
+        self.detector = ONNXTextDetector(det_model_path)
+        self.recognizer = ONNXTextRecognizer(rec_model_path, dict_path)
+
+    def predict(self, img):
+        """
+        Runs full OCR pipeline: detection -> cropping -> recognition.
+        
+        Args:
+            img: BGR image (OpenCV format).
+            
+        Returns:
+            Tuple of (boxes, texts).
+        """
+        # 1. Detection
+        boxes = self.detector.predict(img)
+        if len(boxes) == 0:
+            return [], []
+
+        # 2. Cropping
+        img_crop_list = []
+        for box in boxes:
+            pts = np.array(box, dtype=np.float32)
+            img_crop = get_rotate_crop_image(img, pts)
+            img_crop_list.append(img_crop)
+
+        # 3. Recognition
+        rec_results = self.recognizer.predict(img_crop_list)
+        texts = [res[0] for res in rec_results]
+        
+        return boxes, texts
